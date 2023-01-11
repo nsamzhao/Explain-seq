@@ -1,0 +1,78 @@
+---
+ops: [train, evaluate]
+model: {
+    # TODO: update this line with the absolute path to the file.
+    path: ../../models/beluga_model/beluga_var_input_regression.py,
+    class: Beluga,
+    class_args: {
+        sequence_length: 499,
+        n_targets: 1,
+    },
+    non_strand_specific: mean
+}
+sampler: !obj:selene_sdk.samplers.MultiFileSampler {
+    features: ["sig"],
+    train_sampler: !obj:selene_sdk.samplers.file_samplers.MatFileSampler {
+        filepath: ./data/A549_train_rep1.mat,
+        sequence_key: x,
+        targets_key: y,
+        shuffle: True
+    },
+    validate_sampler: !obj:selene_sdk.samplers.file_samplers.MatFileSampler {
+        filepath: ./data/A549_valid_rep1.mat,
+        sequence_key: x,
+        targets_key: y,
+        shuffle: False
+    },
+    test_sampler: !obj:selene_sdk.samplers.file_samplers.MatFileSampler {
+        filepath: ./data/A549_test_rep1.mat,
+        sequence_key: x,
+        targets_key: y,
+        shuffle: False
+    }
+}
+#sampler: !obj:selene_sdk.samplers.RandomPositionsSampler {
+#    reference_sequence: !obj:selene_sdk.sequences.Genome {
+#        # we include relative paths here, but we recommend using absolute
+#        # paths for future configuration files
+#        input_path: /data/genomes/hg38/seq/hg38.fa,
+#        blacklist_regions: hg38
+#    },
+#    features: !obj:selene_sdk.utils.load_features_list {
+#        input_path: /data/data_repo/shengchd/selene/final_training_set/starr_seq/DNase_overlap/positive_set/A549_feature.txt
+#    },
+#    target_path: /data/data_repo/shengchd/selene/final_training_set/starr_seq/DNase_overlap/positive_set/A549_Starr_conct_intersect_DNase_histone_sorted.bed.gz,
+#    #intervals_path: /data/data_repo/shengchd/selene/final_training_set/sample_interval/hg19_window_400_sample_intervals.bed,
+#    seed: 127,
+#    # A positive example is an 1000bp sequence with at least 1 class/feature annotated to it.
+#    # A negative sample has no classes/features annotated to the sequence.
+#    #sample_negative: True,
+#    sequence_length: 500,
+#    center_bin_to_predict: 500,
+#    test_holdout: [chr8, chr9],
+#    validation_holdout: [chr7],
+#    # The feature must take up 50% of the bin (200bp) for it to be considered
+#    # a feature annotated to that sequence.
+#    feature_thresholds: 0.9, #0.5
+#    mode: train,
+##    save_datasets: [train, validate, test]
+#}
+train_model: !obj:selene_sdk.TrainModel {
+    batch_size: 128, 
+    max_steps: 1498000,  # 40 epochs x 37450 steps/epoch
+    report_stats_every_n_steps: 2300, #6866 steps per epoch
+    n_validation_samples: 51701, # need to change if rep1+rep2
+    n_test_samples: 91339,
+    cpu_n_threads: 32,
+    use_cuda: True,  # TODO: update this if CUDA is not on your machine
+    data_parallel: False,
+    checkpoint_resume: ./transfered_beluga.pth.tar,
+    metrics: {
+        r2: !import sklearn.metrics.r2_score
+    }
+}
+random_seed: 1447
+output_dir: ./training_outputs/transfer_trained
+create_subdirectory: False
+load_test_set: False
+#change lr in train_model.py
